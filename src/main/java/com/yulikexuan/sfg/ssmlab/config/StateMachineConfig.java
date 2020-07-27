@@ -4,6 +4,7 @@
 package com.yulikexuan.sfg.ssmlab.config;
 
 
+import com.yulikexuan.sfg.ssmlab.domain.Payment;
 import com.yulikexuan.sfg.ssmlab.domain.PaymentEvent;
 import com.yulikexuan.sfg.ssmlab.domain.PaymentState;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.statemachine.config.EnableStateMachineFactory;
 import org.springframework.statemachine.config.StateMachineConfigurerAdapter;
 import org.springframework.statemachine.config.builders.StateMachineStateConfigurer;
+import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
 
 import java.util.EnumSet;
 
@@ -30,7 +32,48 @@ public class StateMachineConfig extends
                 .states(EnumSet.allOf(PaymentState.class))
                 .end(PaymentState.AUTH)
                 .end(PaymentState.PRE_AUTH_ERROR)
-                .end(PaymentState.AUTH_ERROR):
+                .end(PaymentState.AUTH_ERROR);
+    }
+
+    /*
+     * A transition is a relationship between a source state and a target state
+     * A switch from a state to another is a state transition caused by a trigger
+     *
+     * Internal Transition
+     *   - Internal transition is used when action needs to be executed without
+     *     causing a state transition
+     *   - With internal transition source and target state is always a same and
+     *     it is identical with self-transition in the absence of state entry
+     *     and exit actions
+     *
+     * External vs. Local Transition
+     *   - Most of the cases external and local transition are functionally
+     *     equivalent except in cases where transition is happening between
+     *     super and sub states
+     *   - Local transition doesn’t cause exit and entry to source state if
+     *     target state is a substate of a source state. Other way around,
+     *     local transition doesn’t cause exit and entry to target state if
+     *     target is a superstate of a source state.
+     */
+    @Override
+    public void configure(
+            StateMachineTransitionConfigurer<PaymentState, PaymentEvent> transitions)
+            throws Exception {
+
+        transitions.withExternal()
+                .source(PaymentState.NEW)
+                .target(PaymentState.NEW)
+                .event(PaymentEvent.PRE_AUTHORIZE)
+                .and()
+                .withExternal()
+                .source(PaymentState.NEW)
+                .target(PaymentState.PRE_AUTH)
+                .event(PaymentEvent.PRE_AUTH_APPROVED)
+                .and()
+                .withExternal()
+                .source(PaymentState.NEW)
+                .target(PaymentState.PRE_AUTH_ERROR)
+                .event(PaymentEvent.PRE_AUTH_DECLINED);
     }
 
 }///:~
