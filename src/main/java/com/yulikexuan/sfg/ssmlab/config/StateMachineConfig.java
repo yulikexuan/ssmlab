@@ -4,17 +4,20 @@
 package com.yulikexuan.sfg.ssmlab.config;
 
 
-import com.yulikexuan.sfg.ssmlab.domain.Payment;
 import com.yulikexuan.sfg.ssmlab.domain.PaymentEvent;
 import com.yulikexuan.sfg.ssmlab.domain.PaymentState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.statemachine.config.EnableStateMachineFactory;
 import org.springframework.statemachine.config.StateMachineConfigurerAdapter;
+import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineStateConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
+import org.springframework.statemachine.listener.StateMachineListenerAdapter;
+import org.springframework.statemachine.state.State;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 
 @Slf4j
@@ -74,6 +77,37 @@ public class StateMachineConfig extends
                 .source(PaymentState.NEW)
                 .target(PaymentState.PRE_AUTH_ERROR)
                 .event(PaymentEvent.PRE_AUTH_DECLINED);
+    }
+
+    @Override
+    public void configure(
+            StateMachineConfigurationConfigurer<PaymentState, PaymentEvent> config)
+            throws Exception {
+
+        config.withConfiguration().listener(new StateMachineListenerAdapter<>() {
+                    @Override
+                    public void stateChanged(
+                            State<PaymentState, PaymentEvent> from,
+                            State<PaymentState, PaymentEvent> to) {
+
+                        if (Objects.isNull(from) && Objects.isNull(to)) {
+                            return;
+                        }
+
+                        if (Objects.equals(from, to)) {
+                            return;
+                        }
+
+                        PaymentState fromState = Objects.isNull(from) ?
+                                null : from.getId();
+
+                        PaymentState toState = Objects.isNull(to) ?
+                                null : to.getId();
+
+                        log.info(">>>>>>> The state changed from {} to {}",
+                                fromState, toState);
+                    }
+                });
     }
 
 }///:~
