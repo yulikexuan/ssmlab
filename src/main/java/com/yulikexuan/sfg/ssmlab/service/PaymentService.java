@@ -8,16 +8,21 @@ import com.yulikexuan.sfg.ssmlab.domain.Payment;
 import com.yulikexuan.sfg.ssmlab.domain.PaymentEvent;
 import com.yulikexuan.sfg.ssmlab.domain.PaymentState;
 import com.yulikexuan.sfg.ssmlab.repository.IPaymentRepository;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
+import org.springframework.statemachine.access.StateMachineAccess;
 import org.springframework.statemachine.access.StateMachineAccessor;
 import org.springframework.statemachine.config.StateMachineFactory;
 import org.springframework.statemachine.support.DefaultStateMachineContext;
+import org.springframework.statemachine.support.StateMachineInterceptorAdapter;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.UUID;
 
 
@@ -30,11 +35,26 @@ final class PaymentService implements IPaymentService {
 
     private final IPaymentRepository paymentRepository;
 
-    private final StateMachineFactory<PaymentState, PaymentEvent> stateMachineFactory;
+    private final StateMachineFactory<PaymentState, PaymentEvent>
+            stateMachineFactory;
+
+    private final StateMachineInterceptorAdapter<PaymentState, PaymentEvent>
+            paymentStateMachineInterceptor;
 
     @Override
     public Payment newPayment(Payment payment) {
         payment.setState(PaymentState.NEW);
+        return this.paymentRepository.save(payment);
+    }
+
+    @Override
+    public Optional<Payment> getPaymentById(UUID paymentId) {
+        return Optional.ofNullable(paymentId)
+                .flatMap(this.paymentRepository::findById);
+    }
+
+    @Override
+    public Payment savePayment(Payment payment) {
         return this.paymentRepository.save(payment);
     }
 
@@ -102,23 +122,27 @@ final class PaymentService implements IPaymentService {
          * StateMachineContext represents a current state of a state machine
          */
         stateMachineAccessor.doWithAllRegions(
-                stateMachineAccess -> stateMachineAccess.resetStateMachine(
+                stateMachineAccess -> {
+                    stateMachineAccess.addStateMachineInterceptor(
+                            this.paymentStateMachineInterceptor);
+                    stateMachineAccess.resetStateMachine(
                         new DefaultStateMachineContext<>(payment.getState(),
-                                null, null, null)));
+                                null, null, null));
+                });
 
         stateMachine.start();
 
         return stateMachine;
     }
 
-    private void sendPaymentEventToStateMachine(
-            UUID paymentId,
-            StateMachine<PaymentState, PaymentEvent> stateMachine,
-            PaymentEvent paymentEvent) {
+    private void sendPaymentEventToStateMachine(final UUID paymentId,
+            final StateMachine<PaymentState, PaymentEvent> stateMachine,
+            final PaymentEvent paymentEvent) {
 
-        Message paymentMessage = MessageBuilder.withPayload(paymentEvent)
-                .setHeader(PAYMENT_ID_MSG_HEADER, paymentId)
-                .build();
+        Message<PaymentEvent> paymentMessage =
+                MessageBuilder.withPayload(paymentEvent)
+                        .setHeader(PAYMENT_ID_MSG_HEADER, paymentId)
+                        .build();
 
         stateMachine.sendEvent(paymentMessage);
     }
