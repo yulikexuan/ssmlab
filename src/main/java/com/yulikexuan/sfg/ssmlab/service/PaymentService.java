@@ -29,8 +29,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 class PaymentService implements IPaymentService {
 
-    static final String PAYMENT_ID_MSG_HEADER = "payment_ic";
-
     private final IPaymentRepository paymentRepository;
 
     private final StateMachineFactory<PaymentState, PaymentEvent>
@@ -67,7 +65,7 @@ class PaymentService implements IPaymentService {
                 this.buildStateMachineWithPayment(paymentId);
 
         this.sendPaymentEventToStateMachine(paymentId, stateMachine,
-                PaymentEvent.PRE_AUTH_APPROVED);
+                PaymentEvent.PRE_AUTHORIZE);
 
         return stateMachine;
     }

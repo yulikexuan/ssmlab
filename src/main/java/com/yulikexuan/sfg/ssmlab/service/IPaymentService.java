@@ -15,6 +15,8 @@ import java.util.UUID;
 
 public interface IPaymentService {
 
+    String PAYMENT_ID_MSG_HEADER = "payment_ic";
+
     Payment newPayment(Payment payment);
 
     Optional<Payment> getPaymentById(UUID paymentId);

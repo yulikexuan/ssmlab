@@ -6,8 +6,11 @@ package com.yulikexuan.sfg.ssmlab.config;
 
 import com.yulikexuan.sfg.ssmlab.domain.PaymentEvent;
 import com.yulikexuan.sfg.ssmlab.domain.PaymentState;
+import com.yulikexuan.sfg.ssmlab.service.IPaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.statemachine.action.Action;
 import org.springframework.statemachine.config.EnableStateMachineFactory;
 import org.springframework.statemachine.config.StateMachineConfigurerAdapter;
 import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
@@ -18,6 +21,7 @@ import org.springframework.statemachine.state.State;
 
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 @Slf4j
@@ -25,6 +29,8 @@ import java.util.Objects;
 @EnableStateMachineFactory
 public class StateMachineConfig extends
         StateMachineConfigurerAdapter<PaymentState, PaymentEvent> {
+
+    static ThreadLocalRandom random = ThreadLocalRandom.current();
 
     @Override
     public void configure(StateMachineStateConfigurer<PaymentState, PaymentEvent> states)
@@ -67,6 +73,7 @@ public class StateMachineConfig extends
                 .source(PaymentState.NEW)
                 .target(PaymentState.NEW)
                 .event(PaymentEvent.PRE_AUTHORIZE)
+                .action(PRE_AUTH_ACTION)
                 .and()
                 .withExternal()
                 .source(PaymentState.NEW)
@@ -84,7 +91,8 @@ public class StateMachineConfig extends
             StateMachineConfigurationConfigurer<PaymentState, PaymentEvent> config)
             throws Exception {
 
-        config.withConfiguration().listener(new StateMachineListenerAdapter<>() {
+        config.withConfiguration().listener(
+                new StateMachineListenerAdapter<>() {
                     @Override
                     public void stateChanged(
                             State<PaymentState, PaymentEvent> from,
@@ -109,5 +117,21 @@ public class StateMachineConfig extends
                     }
                 });
     }
+
+    private static final Action<PaymentState, PaymentEvent> PRE_AUTH_ACTION =
+            stateContext -> {
+                log.debug(">>>>>>> The {} event was called. ", PaymentEvent.PRE_AUTHORIZE);
+                int chance = random.nextInt(0, 10);
+                final var msgHeader = stateContext.getMessageHeader(
+                        IPaymentService.PAYMENT_ID_MSG_HEADER);
+                PaymentEvent successorEvent = (chance < 8) ?
+                        PaymentEvent.PRE_AUTH_APPROVED : PaymentEvent.PRE_AUTH_DECLINED;
+                log.debug(">>>>>>> Sending successor event: {}", successorEvent);
+                stateContext.getStateMachine().sendEvent(
+                        MessageBuilder.withPayload(successorEvent)
+                                .setHeader(IPaymentService.PAYMENT_ID_MSG_HEADER, msgHeader)
+                                .build()
+                );
+            };
 
 }///:~
