@@ -83,7 +83,23 @@ public class StateMachineConfig extends
                 .withExternal()
                 .source(PaymentState.NEW)
                 .target(PaymentState.PRE_AUTH_ERROR)
-                .event(PaymentEvent.PRE_AUTH_DECLINED);
+                .event(PaymentEvent.PRE_AUTH_DECLINED)
+                .and()
+                .withExternal()
+                .source(PaymentState.PRE_AUTH)
+                .target(PaymentState.PRE_AUTH)
+                .event(PaymentEvent.AUTHORIZE)
+                .action(AUTH_ACTION)
+                .and()
+                .withExternal()
+                .source(PaymentState.PRE_AUTH)
+                .target(PaymentState.AUTH)
+                .event(PaymentEvent.AUTH_APPROVED)
+                .and()
+                .withExternal()
+                .source(PaymentState.PRE_AUTH)
+                .target(PaymentState.AUTH_ERROR)
+                .event(PaymentEvent.AUTH_DECLINED);
     }
 
     @Override
@@ -126,6 +142,22 @@ public class StateMachineConfig extends
                         IPaymentService.PAYMENT_ID_MSG_HEADER);
                 PaymentEvent successorEvent = (chance < 8) ?
                         PaymentEvent.PRE_AUTH_APPROVED : PaymentEvent.PRE_AUTH_DECLINED;
+                log.debug(">>>>>>> Sending successor event: {}", successorEvent);
+                stateContext.getStateMachine().sendEvent(
+                        MessageBuilder.withPayload(successorEvent)
+                                .setHeader(IPaymentService.PAYMENT_ID_MSG_HEADER, msgHeader)
+                                .build()
+                );
+            };
+
+    private static final Action<PaymentState, PaymentEvent> AUTH_ACTION =
+            stateContext -> {
+                log.debug(">>>>>>> The {} event was called. ", PaymentEvent.AUTHORIZE);
+                int chance = random.nextInt(0, 10);
+                final var msgHeader = stateContext.getMessageHeader(
+                        IPaymentService.PAYMENT_ID_MSG_HEADER);
+                PaymentEvent successorEvent = (chance < 8) ?
+                        PaymentEvent.AUTH_APPROVED : PaymentEvent.AUTH_DECLINED;
                 log.debug(">>>>>>> Sending successor event: {}", successorEvent);
                 stateContext.getStateMachine().sendEvent(
                         MessageBuilder.withPayload(successorEvent)

@@ -27,6 +27,4 @@ public interface IPaymentService {
 
     StateMachine<PaymentState, PaymentEvent> authorizePayment(UUID paymentId);
 
-    StateMachine<PaymentState, PaymentEvent> declineAuth(UUID paymentId);
-
 }///:~

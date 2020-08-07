@@ -64,6 +64,10 @@ class PaymentService implements IPaymentService {
         StateMachine<PaymentState, PaymentEvent> stateMachine =
                 this.buildStateMachineWithPayment(paymentId);
 
+        if (!stateMachine.getState().getId().equals(PaymentState.NEW)) {
+            throw new IllegalPaymentEventException(PaymentEvent.PRE_AUTHORIZE);
+        }
+
         this.sendPaymentEventToStateMachine(paymentId, stateMachine,
                 PaymentEvent.PRE_AUTHORIZE);
 
@@ -77,21 +81,12 @@ class PaymentService implements IPaymentService {
         StateMachine<PaymentState, PaymentEvent> stateMachine =
                 this.buildStateMachineWithPayment(paymentId);
 
-        this.sendPaymentEventToStateMachine(paymentId, stateMachine,
-                PaymentEvent.AUTH_APPROVED);
-
-        return stateMachine;
-    }
-
-    @Override
-    @Transactional
-    public StateMachine<PaymentState, PaymentEvent> declineAuth(UUID paymentId) {
-
-        StateMachine<PaymentState, PaymentEvent> stateMachine =
-                this.buildStateMachineWithPayment(paymentId);
+        if (!stateMachine.getState().getId().equals(PaymentState.PRE_AUTH)) {
+            throw new IllegalPaymentEventException(PaymentEvent.AUTHORIZE);
+        }
 
         this.sendPaymentEventToStateMachine(paymentId, stateMachine,
-                PaymentEvent.AUTH_DECLINED);
+                PaymentEvent.AUTHORIZE);
 
         return stateMachine;
     }

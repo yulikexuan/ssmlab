@@ -34,14 +34,17 @@ class PaymentServiceIT {
 
     @BeforeEach
     void setUp() {
-        this.payment = Payment.builder().amount(new BigDecimal("12.99")).build();
     }
 
     @Test
     @Transactional
-    void test_Given_A_New_Payment_When_Approved_Auth_Then_Being_Pre_Auth_State() {
+    void test_Given_A_New_Payment_When_Pre_Approved_Auth_Then_Being_Pre_Auth_State() {
 
         // Given
+        this.payment = Payment.builder()
+                .amount(new BigDecimal("12.99"))
+                .build();
+
         Payment givenPayment = this.paymentService.newPayment(this.payment);
 
         // When
@@ -51,7 +54,31 @@ class PaymentServiceIT {
 
         // Then
         log.debug(">>>>>>> The pre-authorized payment is {}", preAuthorizedPayment);
-        assertThat(preAuthorizedPayment.getState()).isEqualTo(PaymentState.PRE_AUTH);
+        assertThat(preAuthorizedPayment.getState()).isIn(PaymentState.PRE_AUTH,
+                PaymentState.PRE_AUTH_ERROR);
+    }
+
+    @Test
+    @Transactional
+    void test_Given_A_Pre_Authorized_Payment_When_Approved_Auth_Then_Being_Pre_Auth_State() {
+
+        // Given
+        this.payment = Payment.builder()
+                .amount(new BigDecimal("12.99"))
+                .state(PaymentState.PRE_AUTH)
+                .build();
+
+        Payment givenPayment = this.paymentService.savePayment(this.payment);
+
+        // When
+        this.paymentService.authorizePayment(givenPayment.getId());
+        Payment authorizedPayment = this.paymentRepository.getOne(
+                givenPayment.getId());
+
+        // Then
+        log.debug(">>>>>>> The authorized payment is {}", authorizedPayment);
+        assertThat(authorizedPayment.getState()).isIn(PaymentState.AUTH,
+                PaymentState.AUTH_ERROR);
     }
 
 }///:~

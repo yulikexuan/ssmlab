@@ -44,7 +44,7 @@ class StateMachineConfigIT {
 
         this.stateMachine.sendEvent(PaymentEvent.PRE_AUTHORIZE);
 
-        this.stateMachine.sendEvent(PaymentEvent.PRE_AUTH_APPROVED);
+        // this.stateMachine.sendEvent(PaymentEvent.PRE_AUTH_APPROVED);
 
         PaymentState finalState = this.stateMachine.getState().getId();
 
