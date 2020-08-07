@@ -10,18 +10,21 @@ import com.yulikexuan.sfg.ssmlab.service.IPaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 import org.springframework.statemachine.config.EnableStateMachineFactory;
 import org.springframework.statemachine.config.StateMachineConfigurerAdapter;
 import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineStateConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
+import org.springframework.statemachine.guard.Guard;
 import org.springframework.statemachine.listener.StateMachineListenerAdapter;
 import org.springframework.statemachine.state.State;
 
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Predicate;
 
 
 @Slf4j
@@ -74,6 +77,7 @@ public class StateMachineConfig extends
                 .target(PaymentState.NEW)
                 .event(PaymentEvent.PRE_AUTHORIZE)
                 .action(PRE_AUTH_ACTION)
+                .guard(PAYMENT_GUARD)
                 .and()
                 .withExternal()
                 .source(PaymentState.NEW)
@@ -90,6 +94,7 @@ public class StateMachineConfig extends
                 .target(PaymentState.PRE_AUTH)
                 .event(PaymentEvent.AUTHORIZE)
                 .action(AUTH_ACTION)
+                .guard(PAYMENT_GUARD)
                 .and()
                 .withExternal()
                 .source(PaymentState.PRE_AUTH)
@@ -164,6 +169,12 @@ public class StateMachineConfig extends
                                 .setHeader(IPaymentService.PAYMENT_ID_MSG_HEADER, msgHeader)
                                 .build()
                 );
+            };
+
+    private static final Guard<PaymentState, PaymentEvent> PAYMENT_GUARD =
+            stateContext -> {
+                return Objects.nonNull(stateContext.getMessageHeader(
+                        IPaymentService.PAYMENT_ID_MSG_HEADER));
             };
 
 }///:~

@@ -59,6 +59,7 @@ class PaymentServiceIT {
     }
 
     @Test
+    @RepeatedTest(3)
     @Transactional
     void test_Given_A_Pre_Authorized_Payment_When_Approved_Auth_Then_Being_Pre_Auth_State() {
 
